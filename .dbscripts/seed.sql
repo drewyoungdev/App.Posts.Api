@@ -26,7 +26,7 @@ INSERT INTO posts (parent_id, score, author, create_date, comment) VALUES
 ('8', '3', 'user1', '2010-08-20T15:00:00', 'Reply to "8" comment'),
 ('5', '2', 'user1', '2010-08-20T15:00:00', 'Reply to "5" comment');
 --### Create function to get post tree
-CREATE FUNCTION get_posts_tree_by_parent_id(input_parent_id INT, top_level_limit INT, sub_level_limit INT)
+CREATE FUNCTION get_posts_tree_by_parent_id(input_parent_id INT, sub_level_limit INT)
 RETURNS TABLE(id INT, parent_id INT, author VARCHAR, create_date TIMESTAMP, score INT, comment TEXT, depth INT, num_of_replies BIGINT)
 AS 
 $$
@@ -46,10 +46,9 @@ BEGIN
 		 ARRAY[-p.score, p.id] path   -- used to sort by vote then ID
 	  FROM posts p
 		-- Filter for all generations of children of parent (e.g. when you enter a main thread)
-		WHERE p.parent_id = input_parent_id
+		WHERE p.id = input_parent_id
 		-- Limit the initial list of posts loaded per main thread
-		ORDER BY p.score DESC, p.id ASC 
-		LIMIT top_level_limit 
+		ORDER BY p.score DESC, p.id ASC
 		)
 	  UNION
 	  -- Self referential select performed repeatedly until no more rows are found

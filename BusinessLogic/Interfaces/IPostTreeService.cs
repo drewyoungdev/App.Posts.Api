@@ -6,6 +6,6 @@ namespace PostsApi.BusinessLogic.Interfaces
 {
     public interface IPostTreeService
     {
-         Task<List<Post>> GetPostTree();
+         Task<List<Post>> GetPostTree(int parentId, int subLevelLimit);
     }
 }

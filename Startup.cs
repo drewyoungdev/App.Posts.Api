@@ -29,6 +29,8 @@ namespace PostsApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
             services.AddTransient<IPostTreeService, PostTreeService>();
             services.AddTransient<IPostsRepository, PostsRepository>();
             

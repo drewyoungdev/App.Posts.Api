@@ -15,9 +15,31 @@ namespace PostsApi.BusinessLogic
             this.postsRepository = postsRepository;
         }
 
-        public async Task<List<Post>> GetPostTree()
+        // Depends on posts being ordered. This ensures lookup always contains parent before child searches for parent.
+        // Foreach loop guarentees items are re-added to new tree structure in order they come from db
+        public async Task<List<Post>> GetPostTree(int parentId, int subLevelLimit)
         {
-            return await this.postsRepository.GetFlatPostTree(1);
+            var flatPostTree = await this.postsRepository.GetFlatPostTree(parentId, subLevelLimit);
+
+            var lookup = new Dictionary<int, Post>();
+            var rootPosts = new List<Post>();
+
+            foreach (var post in flatPostTree)
+            {
+                lookup.Add(post.Id, post);
+
+                if (post.Depth == 0)
+                {
+                    rootPosts.Add(post);
+                }
+                else
+                {
+                    var parentPost = lookup[post.ParentId];
+                    parentPost.Replies.Add(post);
+                }
+            }
+
+            return rootPosts;
         }
     }
 }
