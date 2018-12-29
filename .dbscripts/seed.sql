@@ -24,9 +24,27 @@ INSERT INTO posts (parent_id, score, author, create_date, comment) VALUES
 ('8', '0', 'user1', '2010-08-20T15:00:00', 'Reply to "8" comment'),
 ('8', '2', 'user1', '2010-08-20T15:00:00', 'Reply to "8" comment'),
 ('8', '3', 'user1', '2010-08-20T15:00:00', 'Reply to "8" comment'),
-('5', '2', 'user1', '2010-08-20T15:00:00', 'Reply to "5" comment');
+('5', '2', 'user1', '2010-08-20T15:00:00', 'Reply to "5" comment'),
+(NULL, '3', 'user1', '2010-08-20T15:00:00', 'Reply to "8" comment'),
+('16', '0', 'user1', '2010-08-20T15:00:00', 'Level 1'),
+('17', '0', 'user1', '2010-08-20T15:00:00', 'Level 2'),
+('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 3'),
+('19', '0', 'user1', '2010-08-20T15:00:00', 'Level 4'),
+('20', '0', 'user1', '2010-08-20T15:00:00', 'Level 5'),
+('21', '0', 'user1', '2010-08-20T15:00:00', 'Level 6'),
+('22', '0', 'user1', '2010-08-20T15:00:00', 'Level 7'),
+('17', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.1'),
+('21', '0', 'user1', '2010-08-20T15:00:00', 'Level 6.1'),
+('21', '0', 'user1', '2010-08-20T15:00:00', 'Level 6.2'),
+('19', '0', 'user1', '2010-08-20T15:00:00', 'Level 3.1'),
+('19', '0', 'user1', '2010-08-20T15:00:00', 'Level 3.2'),
+('19', '0', 'user1', '2010-08-20T15:00:00', 'Level 3.3'),
+('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.1'),
+('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.2'),
+('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.3'),
+('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.4');
 --### Create function to get post tree
-CREATE FUNCTION get_posts_tree_by_parent_id(input_id INT, sub_level_limit INT)
+CREATE FUNCTION get_posts_tree_by_id(input_id INT, sub_level_limit INT)
 RETURNS TABLE(id INT, parent_id INT, author VARCHAR, create_date TIMESTAMP, score INT, comment TEXT, depth INT, num_of_replies BIGINT)
 AS 
 $$
@@ -43,13 +61,13 @@ BEGIN
 		 p.score,
 		 p.comment,
 		 0 depth,
-		 ARRAY[-p.score, p.id] path   -- used to sort by vote then ID
+		 ARRAY[-p.score, p.id] path,   -- used to sort by vote then ID
+	     ROW_NUMBER() OVER (ORDER BY p.score DESC, p.id) row_num
 	  FROM posts p
 		-- Filter for all generations of children of parent (e.g. when you enter a main thread)
 		WHERE p.id = input_id
-		-- Limit the initial list of posts loaded per main thread
 		ORDER BY p.score DESC, p.id ASC
-		)
+	  )
 	  UNION
 	  -- Self referential select performed repeatedly until no more rows are found
 	  (SELECT
@@ -60,14 +78,15 @@ BEGIN
 		 p.score,
 		 p.comment,
 		 pt.depth + 1,
-		 pt.path || ARRAY[-p.score, p.id]
+		 pt.path || ARRAY[-p.score, p.id],
+	     ROW_NUMBER() OVER (ORDER BY p.score DESC, p.id)
 	  FROM posts p
 		JOIN posts_tree pt ON p.parent_id = pt.id
-		-- Every depth we want to sort by score then id then only apply recursion to top x posts (3 to test) 
-		-- Note: this cannot be used if base criteria filters on parent_id IS NULL 
-		-- because it will prevent any other 'parent' nodes from finding their children after the LIMIT is consumed
-		ORDER BY p.score DESC, p.id ASC 
-		LIMIT sub_level_limit
+	    --This limits the number of recursive joins made at each depth and limits the depth.
+		--Retrieve top 20 posts per depths under 7.
+		WHERE pt.depth <= 6
+	   	LIMIT sub_level_limit
+		--TODO: Figure out how to do conditional limits based on depth (e.g. at depth 6 we only want LIMIT 1)
 	  )
 	)
 	
@@ -79,9 +98,18 @@ BEGIN
 	ptree.score, 
 	ptree.comment,
 	ptree.depth,
-	-- Gather count of replies (Query to find out how many other posts reference current one as parent_id)
+	--Gather count of replies (Query to find out how many other posts reference current one as parent_id)
 	(SELECT COUNT(p.parent_id) FROM posts p WHERE p.parent_id = ptree.id) AS num_of_replies
-	FROM posts_tree ptree 
+	FROM posts_tree ptree
+	--Filter results to limit the amounts per depth (and reduce unnecessary counts)
+	--This is performance on midware and reduces response payloads to FE clients
+	WHERE (ptree.depth = 0 AND ptree.row_num <= 20) 
+			OR (ptree.depth = 1 AND ptree.row_num <= 10) 
+			OR (ptree.depth = 2 AND ptree.row_num <= 5)
+			OR (ptree.depth = 3 AND ptree.row_num <= 3)
+			OR (ptree.depth = 4 AND ptree.row_num <= 1)
+			OR (ptree.depth = 5 AND ptree.row_num <= 1)
+			OR (ptree.depth = 6 AND ptree.row_num <= 1)
 	ORDER BY ptree.path;
 
 END;

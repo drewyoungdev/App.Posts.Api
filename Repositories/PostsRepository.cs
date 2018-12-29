@@ -54,7 +54,7 @@ namespace PostsApi.Repositories
                         param.Add("@input_id", id);
                         param.Add("@sub_level_limit", subLevelLimit);
 
-                var results = await conn.QueryAsync<Post>("get_posts_tree_by_parent_id", param, null, null, CommandType.StoredProcedure);
+                var results = await conn.QueryAsync<Post>("get_posts_tree_by_id", param, null, null, CommandType.StoredProcedure);
 
                 return results.ToList();
             }

@@ -7,8 +7,6 @@ using PostsApi.Repositories.Interfaces;
 
 namespace PostsApi.BusinessLogic
 {
-    // or should i do the main post in a separate db call then swith procedure to handle one variation by parent_id and one variation by just id
-    // TODO: need better way to limit per depth.
     public class PostTreeService : IPostTreeService
     {
         private readonly IPostsRepository postsRepository;
@@ -30,8 +28,8 @@ namespace PostsApi.BusinessLogic
 
         public async Task<List<Post>> LoadMainPost(int id)
         {
-            // return top x comments for main post
-            var flatPostTree = await this.postsRepository.GetFlatPostTree(id, 200);
+            // return top 20 comments for each depth
+            var flatPostTree = await this.postsRepository.GetFlatPostTree(id, 20);
 
             // extract main post (no parent id)
             var mainPost = flatPostTree.Where(x => x.ParentId == 0).FirstOrDefault();
@@ -56,6 +54,7 @@ namespace PostsApi.BusinessLogic
 
         public async Task<List<Post>> LoadReplies(int id)
         {
+            // return next 10 comments for each depth
             var flatPostTree = await this.postsRepository.GetFlatPostTree(id, 10);
 
             return BuildTree(flatPostTree, 0);
