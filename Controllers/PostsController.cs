@@ -17,13 +17,16 @@ namespace PostsApi.Controllers
             this.postTreeService = postTreeService;
         }
 
-        [HttpGet("{parentId:int}")]
-        public async Task<ActionResult<List<Post>>> Get(int parentId, int subLevelLimit = 10)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<List<Post>>> GetMainPost(int id)
         {
-            // May require metadata around the parentId we are pulling all posts for...
-            // For example, we don't have the number of Replies to the parent post 
-            // e.g. we only show 5 but there are 10 total, there is no way to notify client there is more to load
-            return await this.postTreeService.GetPostTree(parentId, subLevelLimit);
+            return await this.postTreeService.LoadMainPost(id);
+        }
+
+        [HttpGet("moreReplies/{id:int}")]
+        public async Task<ActionResult<List<Post>>> GetMoreReplies(int id)
+        {
+            return await this.postTreeService.LoadMoreReplies(id);
         }
     }
 }
