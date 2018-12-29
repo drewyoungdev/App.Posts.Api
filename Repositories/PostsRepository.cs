@@ -28,6 +28,22 @@ namespace PostsApi.Repositories
             }
         }
  
+        public async Task<List<Post>> GetMainFeed(int limit)
+        {
+            using (var conn = this.Connection)
+            {
+                string sQuery = "SELECT *, (SELECT COUNT(p.parent_id) FROM posts p WHERE p.parent_id = mp.id) AS num_of_replies " +
+                                "FROM posts mp WHERE mp.parent_id IS NULL " + 
+                                "ORDER BY mp.score DESC, mp.id LIMIT @limit";
+                
+                conn.Open();
+                
+                var results = await conn.QueryAsync<Post>(sQuery, new { limit = limit });
+
+                return results.ToList();
+            }
+        }
+
         public async Task<List<Post>> GetFlatPostTree(int id, int subLevelLimit)
         {
             using (var conn = this.Connection)

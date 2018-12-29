@@ -7,7 +7,8 @@ using PostsApi.Repositories.Interfaces;
 
 namespace PostsApi.BusinessLogic
 {
-    // (need better way to limit per depth)
+    // or should i do the main post in a separate db call then swith procedure to handle one variation by parent_id and one variation by just id
+    // TODO: need better way to limit per depth.
     public class PostTreeService : IPostTreeService
     {
         private readonly IPostsRepository postsRepository;
@@ -17,11 +18,14 @@ namespace PostsApi.BusinessLogic
             this.postsRepository = postsRepository;
         }
 
-        public Task<List<Post>> LoadMainFeed()
+        public async Task<List<Post>> LoadMainFeed()
         {
-            // update postgres fn to accept "NULL" as input and set subLevelLimit = 0
-            // or have a separate fn for main feed?
-            throw new System.NotImplementedException();
+            // return top x posts (filter further by date range? e.g. last two days)
+            var mainFeed = await this.postsRepository.GetMainFeed(2);
+
+            // TODO: start task to append main post data (same functionality as LoadMainPost but for many ids)
+
+            return mainFeed;
         }
 
         public async Task<List<Post>> LoadMainPost(int id)
@@ -39,7 +43,7 @@ namespace PostsApi.BusinessLogic
 
             // TODO: start task to append main post data (link_url (images), subreddit, subreddit info, up/down percentage)
 
-            // start task to build tree
+            // start task to build tree. main post was depth 0 and replies start at 1.
             var repliesTree = BuildTree(repliesToMainPost, 1);
 
             // combine data sets
@@ -50,12 +54,10 @@ namespace PostsApi.BusinessLogic
             return postTree;
         }
 
-        public async Task<List<Post>> LoadMoreReplies(int id)
+        public async Task<List<Post>> LoadReplies(int id)
         {
-            // return top x comments for reply
             var flatPostTree = await this.postsRepository.GetFlatPostTree(id, 10);
 
-            // build tree of replies
             return BuildTree(flatPostTree, 0);
         }
 

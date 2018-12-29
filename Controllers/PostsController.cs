@@ -17,16 +17,22 @@ namespace PostsApi.Controllers
             this.postTreeService = postTreeService;
         }
 
+        [HttpGet("all")]
+        public async Task<ActionResult<List<Post>>> GetMainFeed()
+        {
+            return await this.postTreeService.LoadMainFeed();
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<List<Post>>> GetMainPost(int id)
         {
             return await this.postTreeService.LoadMainPost(id);
         }
 
-        [HttpGet("moreReplies/{id:int}")]
-        public async Task<ActionResult<List<Post>>> GetMoreReplies(int id)
+        [HttpGet("replies/{id:int}")]
+        public async Task<ActionResult<List<Post>>> GetReplies(int id)
         {
-            return await this.postTreeService.LoadMoreReplies(id);
+            return await this.postTreeService.LoadReplies(id);
         }
     }
 }

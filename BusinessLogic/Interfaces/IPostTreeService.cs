@@ -8,6 +8,6 @@ namespace PostsApi.BusinessLogic.Interfaces
     {
         Task<List<Post>> LoadMainFeed();
         Task<List<Post>> LoadMainPost(int id);
-        Task<List<Post>> LoadMoreReplies(int id);
+        Task<List<Post>> LoadReplies(int id);
     }
 }
