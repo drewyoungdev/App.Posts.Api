@@ -28,14 +28,14 @@ namespace PostsApi.Repositories
             }
         }
  
-        public async Task<List<Post>> GetFlatPostTree(int parentId, int subLevelLimit)
+        public async Task<List<Post>> GetFlatPostTree(int id, int subLevelLimit)
         {
             using (var conn = this.Connection)
             {
                 conn.Open();
 
                 PostgresqlParameters param = new PostgresqlParameters();
-                        param.Add("@input_parent_id", parentId);
+                        param.Add("@input_id", id);
                         param.Add("@sub_level_limit", subLevelLimit);
 
                 var results = await conn.QueryAsync<Post>("get_posts_tree_by_parent_id", param, null, null, CommandType.StoredProcedure);
