@@ -33,7 +33,7 @@ INSERT INTO posts (id, parent_id, upvotes, downvotes, author, create_date, body)
 ('20', '11', '3', '8', 'user1', '2010-08-20T15:00:00', 'Lowest Reply in Post 11 (below post with no votes)'),
 ('21', '11', '100', '100', 'user1', '2010-08-20T15:00:00', '0 score but with upvotes and downvotes');
 -- ## Lower Bound of Wilson Score Confidence Interval
---The determines the likelihood of another "upvote" based on the binomial distribution of upvotes to downvotes
+--The determines the likelihood of another "upvote" or "downvote" based on the binomial distribution of upvotes and downvotes
 --Currently this is hardcoded for a 95% confidence level http://www.evanmiller.org/how-not-to-sort-by-average-rating.html
 --Node.js implementation: https://gist.github.com/timelf123/dadca20e7faa17969d3eb6ee375e2c98
 CREATE FUNCTION ci_lower_bound(upvotes INT, downvotes INT, use_upvotes BOOLEAN)
@@ -54,18 +54,18 @@ BEGIN
 			RETURN 0;
 		END IF;
 		
-		RETURN ((upvotes + 1.9208) / (upvotes + downvotes) - 
+		RETURN ROUND(((upvotes + 1.9208) / (upvotes + downvotes) - 
 				1.96 * SQRT((upvotes * downvotes) / (upvotes + downvotes) + 0.9604) / 
-				(upvotes + downvotes)) / (1 + 3.8416 / (upvotes + downvotes));
+				(upvotes + downvotes)) / (1 + 3.8416 / (upvotes + downvotes))::NUMERIC, 5);
 	ELSE
 		-- If sorting by downvotes but post has positive rating, then return 0
 		IF (upvotes > downvotes) THEN
 			RETURN 0;
 		END IF;
 														
-		RETURN ((downvotes + 1.9208) / (upvotes + downvotes) - 
+		RETURN ROUND(((downvotes + 1.9208) / (upvotes + downvotes) - 
 				1.96 * SQRT((upvotes * downvotes) / (upvotes + downvotes) + 0.9604) / 
-				(upvotes + downvotes)) / (1 + 3.8416 / (upvotes + downvotes));
+				(upvotes + downvotes)) / (1 + 3.8416 / (upvotes + downvotes))::NUMERIC, 5);
 	END IF;
 END; 
 $$
@@ -121,4 +121,4 @@ $$
 LANGUAGE 'plpgsql';
 -- NEW: fn to just get root-post replies without algorithm (get_root_post_replies) (old way by just overall score (upvotes - downvotes))
 -- NEW: fn to get all replies to a parent post (get_all_replies) (used to load replies after algorithm) + one depth and one reply
--- NEW: fn to just get root-post (get_root_post) (FE can load root post and it's meta data asynchronously while loading replies)
+-- NEW: fn to just get root-post (get_root_post)
