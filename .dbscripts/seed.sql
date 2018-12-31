@@ -44,7 +44,11 @@ INSERT INTO posts (parent_id, score, author, create_date, comment) VALUES
 ('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.3'),
 ('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.4');
 --### Create function to get post tree
-CREATE FUNCTION get_posts_tree_by_parent_id(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
+-- NEW: fn to just get root-post replies with algorithm (get_root_post_replies_w_algorithm)
+-- NEW: fn to just get root-post replies without algorithm (get_root_post_replies)
+-- NEW: fn to get all replies to a parent post (get_all_replies) (used to load replies after algorithm) + one depth and one reply
+-- NEW: fn to just get root-post (get_root_post) (FE can load root post asynchronously while loading replies)
+CREATE FUNCTION get_replies_by_parent_id(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
 RETURNS TABLE(id INT, parent_id INT, author VARCHAR, create_date TIMESTAMP, score INT, comment TEXT, depth INT, num_of_replies BIGINT)
 AS 
 $$
@@ -61,10 +65,12 @@ BEGIN
 		 p.score,
 		 p.comment,
 		 0 depth,
+		 -- vv An upvote and downvote should be sent to Lower Wilson Bound algorithm here instead vv
 		 ARRAY[-p.score, p.id] path   -- used to sort by vote then ID
 	  FROM posts p
 		-- Filter for all generations of children of parent (e.g. get replies to root post)
 		WHERE p.parent_id = input_parent_id
+		-- this should then order by the result of the Lower Wilson Bound algorithm
 		ORDER BY p.score DESC, p.id ASC
 		LIMIT direct_reply_limit
 	  )
@@ -83,8 +89,13 @@ BEGIN
 	  FROM posts p
 		JOIN posts_tree pt ON p.parent_id = pt.id
 	    --This limits the number of recursive joins made at each depth and limits the depth.
+		--Reddit displays their posts based on what they think is most valuable in the conversation.
+		--However, if no activity on thread, then these rules should not apply.
+		--Only at certain points does the algorithm kick in
 		WHERE pt.depth + 1 <= depth_limit
+		-- this should then order by the result of the Lower Wilson Bound algorithm
 		ORDER BY p.score DESC, p.id ASC
+		-- only show comments that meet a certain threshold
 	   	LIMIT recursive_limit
 	  )
 	)
@@ -147,13 +158,14 @@ BEGIN
 			direct_reply_limit := 60;
 			depth_limit := 4;
 			recursive_limit := 1;
+		-- Case statement breaks if you send a bad ID
 	END CASE;
 	
 	--combine and return results
 	RETURN QUERY
  	SELECT * FROM root_post
 	UNION ALL
-	SELECT * FROM get_posts_tree_by_parent_id(input_id, direct_reply_limit, depth_limit, recursive_limit);
+	SELECT * FROM get_replies_by_parent_id(input_id, direct_reply_limit, depth_limit, recursive_limit);
 	
 	--RAISE NOTICE '% % % %', parent_num_of_replies, direct_reply_limit, depth_limit, recursive_limit;
 	-- 	FOR items IN SELECT * FROM joined_results LOOP

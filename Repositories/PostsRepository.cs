@@ -71,7 +71,7 @@ namespace PostsApi.Repositories
                 param.Add("@depth_limit", depthLimit);
                 param.Add("@recursive_limit", recursiveLimit);
 
-                var results = await conn.QueryAsync<Post>("get_posts_tree_by_parent_id", param, null, null, CommandType.StoredProcedure);
+                var results = await conn.QueryAsync<Post>("get_replies_by_parent_id", param, null, null, CommandType.StoredProcedure);
 
                 return results.ToList();
             }
