@@ -44,17 +44,34 @@ namespace PostsApi.Repositories
             }
         }
 
-        public async Task<List<Post>> GetFlatPostTree(int id, int subLevelLimit)
+        public async Task<List<Post>> GetRootPostWithReplies(int rootPostId)
         {
             using (var conn = this.Connection)
             {
                 conn.Open();
 
                 PostgresqlParameters param = new PostgresqlParameters();
-                        param.Add("@input_id", id);
-                        param.Add("@sub_level_limit", subLevelLimit);
+                param.Add("@input_id", rootPostId);
 
-                var results = await conn.QueryAsync<Post>("get_posts_tree_by_id", param, null, null, CommandType.StoredProcedure);
+                var results = await conn.QueryAsync<Post>("get_root_post_with_replies", param, null, null, CommandType.StoredProcedure);
+
+                return results.ToList();
+            }
+        }
+
+        public async Task<List<Post>> GetReplies(int parentId, int directReplyLimit, int depthLimit, int recursiveLimit)
+        {
+            using (var conn = this.Connection)
+            {
+                conn.Open();
+
+                PostgresqlParameters param = new PostgresqlParameters();
+                param.Add("@input_parent_id", parentId);
+                param.Add("@direct_reply_limit", directReplyLimit);
+                param.Add("@depth_limit", depthLimit);
+                param.Add("@recursive_limit", recursiveLimit);
+
+                var results = await conn.QueryAsync<Post>("get_posts_tree_by_parent_id", param, null, null, CommandType.StoredProcedure);
 
                 return results.ToList();
             }

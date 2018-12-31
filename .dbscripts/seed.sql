@@ -44,7 +44,7 @@ INSERT INTO posts (parent_id, score, author, create_date, comment) VALUES
 ('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.3'),
 ('18', '0', 'user1', '2010-08-20T15:00:00', 'Level 2.4');
 --### Create function to get post tree
-CREATE FUNCTION get_posts_tree_by_id(input_id INT, sub_level_limit INT)
+CREATE FUNCTION get_posts_tree_by_parent_id(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
 RETURNS TABLE(id INT, parent_id INT, author VARCHAR, create_date TIMESTAMP, score INT, comment TEXT, depth INT, num_of_replies BIGINT)
 AS 
 $$
@@ -61,14 +61,15 @@ BEGIN
 		 p.score,
 		 p.comment,
 		 0 depth,
-		 ARRAY[-p.score, p.id] path,   -- used to sort by vote then ID
-	     ROW_NUMBER() OVER (ORDER BY p.score DESC, p.id) row_num
+		 ARRAY[-p.score, p.id] path   -- used to sort by vote then ID
 	  FROM posts p
-		-- Filter for all generations of children of parent (e.g. when you enter a main thread)
-		WHERE p.id = input_id
+		-- Filter for all generations of children of parent (e.g. get replies to root post)
+		WHERE p.parent_id = input_parent_id
 		ORDER BY p.score DESC, p.id ASC
+		LIMIT direct_reply_limit
 	  )
-	  UNION
+	  -- test UNION ALL for performance
+	  UNION ALL
 	  -- Self referential select performed repeatedly until no more rows are found
 	  (SELECT
 		 p.id,
@@ -78,15 +79,13 @@ BEGIN
 		 p.score,
 		 p.comment,
 		 pt.depth + 1,
-		 pt.path || ARRAY[-p.score, p.id],
-	     ROW_NUMBER() OVER (ORDER BY p.score DESC, p.id)
+		 pt.path || ARRAY[-p.score, p.id]
 	  FROM posts p
 		JOIN posts_tree pt ON p.parent_id = pt.id
 	    --This limits the number of recursive joins made at each depth and limits the depth.
-		--Retrieve top 20 posts per depths under 7.
-		WHERE pt.depth <= 6
-	   	LIMIT sub_level_limit
-		--TODO: Figure out how to do conditional limits based on depth (e.g. at depth 6 we only want LIMIT 1)
+		WHERE pt.depth + 1 <= depth_limit
+		ORDER BY p.score DESC, p.id ASC
+	   	LIMIT recursive_limit
 	  )
 	)
 	
@@ -98,38 +97,72 @@ BEGIN
 	ptree.score, 
 	ptree.comment,
 	ptree.depth,
-	--Gather count of replies (Query to find out how many other posts reference current one as parent_id)
-	(SELECT COUNT(p.parent_id) FROM posts p WHERE p.parent_id = ptree.id) AS num_of_replies
+	-- Gather count of replies (Query to find out how many other posts reference current one as parent_id)
+	(SELECT COUNT(p.id) FROM posts p WHERE p.parent_id = ptree.id) AS num_of_replies
 	FROM posts_tree ptree
-	--Filter results to limit the amounts per depth (and reduce unnecessary counts)
-	--This is performance on midware and reduces response payloads to FE clients
-	WHERE (ptree.depth = 0 AND ptree.row_num <= 20) 
-			OR (ptree.depth = 1 AND ptree.row_num <= 10) 
-			OR (ptree.depth = 2 AND ptree.row_num <= 5)
-			OR (ptree.depth = 3 AND ptree.row_num <= 3)
-			OR (ptree.depth = 4 AND ptree.row_num <= 1)
-			OR (ptree.depth = 5 AND ptree.row_num <= 1)
-			OR (ptree.depth = 6 AND ptree.row_num <= 1)
+	-- Removed since new limit parameters will prevent any unnecessary recursive calculations
 	ORDER BY ptree.path;
 
 END;
 $$ 
 LANGUAGE 'plpgsql';
---### Create function to get reply counts per post
--- CREATE FUNCTION get_num_of_replies_by_ids(input_ids INT[])
--- RETURNS TABLE(id INT, num_of_replies BIGINT)
--- AS 
--- $$
--- BEGIN
--- 	RETURN QUERY
+-- ### Create function to get a root post + it's replies
+CREATE FUNCTION get_root_post_with_replies(input_id INT)
+RETURNS TABLE(id INT, parent_id INT, author VARCHAR, create_date TIMESTAMP, score INT, comment TEXT, depth INT, num_of_replies BIGINT)
+AS 
+$$ 
+DECLARE
+	parent_num_of_replies integer;
+	direct_reply_limit INT;
+	depth_limit INT;
+	recursive_limit INT;
+BEGIN
+
+	-- Retrieve root post data. Count will dictate how many nested replies we will retrieve
+	CREATE TEMP TABLE root_post AS
+	SELECT 	
+		p.id,
+		p.parent_id,
+		p.author,
+		p.create_date,
+		p.score, 
+		p.comment,
+		0 depth,
+		(SELECT COUNT(sub_p.id) FROM posts sub_p WHERE sub_p.parent_id = p.id) AS num_of_replies
+		FROM posts p where p.id = input_id;
+
+	SELECT rp.num_of_replies INTO parent_num_of_replies FROM root_post rp;
 	
--- 	SELECT 
---   p.parent_id, 
--- 	COUNT(p.parent_id) AS num_of_replies 
--- 	FROM posts p 
---   WHERE p.parent_id = ANY(input_ids)
---   GROUP BY p.parent_id;
+	-- Case statement to determine how many replies to load, depth of each tree branch, how many recursions per depth
+	CASE
+		WHEN parent_num_of_replies <= 25 THEN
+     		direct_reply_limit := 25;
+			depth_limit := 6;
+			recursive_limit := 4;
+		WHEN parent_num_of_replies BETWEEN 26 AND 80 THEN
+			direct_reply_limit := 40;
+			depth_limit := 4;
+			recursive_limit := 2;
+		WHEN parent_num_of_replies > 80 THEN
+			direct_reply_limit := 60;
+			depth_limit := 4;
+			recursive_limit := 1;
+	END CASE;
 	
--- END;
--- $$ 
--- LANGUAGE 'plpgsql';
+	--combine and return results
+	RETURN QUERY
+ 	SELECT * FROM root_post
+	UNION ALL
+	SELECT * FROM get_posts_tree_by_parent_id(input_id, direct_reply_limit, depth_limit, recursive_limit);
+	
+	--RAISE NOTICE '% % % %', parent_num_of_replies, direct_reply_limit, depth_limit, recursive_limit;
+	-- 	FOR items IN SELECT * FROM joined_results LOOP
+	--         RAISE NOTICE '%', items;
+	--  END LOOP;
+	
+	DROP TABLE root_post;
+	RETURN;
+			
+END; 
+$$
+LANGUAGE 'plpgsql';

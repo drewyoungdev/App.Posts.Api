@@ -26,36 +26,36 @@ namespace PostsApi.BusinessLogic
             return mainFeed;
         }
 
-        public async Task<List<Post>> LoadMainPost(int id)
+        public async Task<List<Post>> LoadRootPostWithReplies(int rootPostId)
         {
             // return top 20 comments for each depth
-            var flatPostTree = await this.postsRepository.GetFlatPostTree(id, 20);
+            var flatPostTree = await this.postsRepository.GetRootPostWithReplies(rootPostId);
 
             // extract main post (no parent id)
-            var mainPost = flatPostTree.Where(x => x.ParentId == 0).FirstOrDefault();
+            var rootPost = flatPostTree.Where(x => x.ParentId == 0).FirstOrDefault();
 
-            if (mainPost == null) return null;
+            if (rootPost == null) return null;
 
             // remove main post from post tree building logic (ensure order is not messed up)
-            var repliesToMainPost = flatPostTree.Where(x => x.Id != mainPost.Id).ToList();
+            var repliesToRootPost = flatPostTree.Where(x => x.Id != rootPost.Id).ToList();
 
             // TODO: start task to append main post data (link_url (images), subreddit, subreddit info, up/down percentage)
 
             // start task to build tree. main post was depth 0 and replies start at 1.
-            var repliesTree = BuildTree(repliesToMainPost, 1);
+            var repliesTree = BuildTree(repliesToRootPost, 0);
 
             // combine data sets
             var postTree = new List<Post>(repliesTree.Count + 1);
-            postTree.Add(mainPost);
+            postTree.Add(rootPost);
             postTree.AddRange(repliesTree);
 
             return postTree;
         }
 
-        public async Task<List<Post>> LoadReplies(int id)
+        public async Task<List<Post>> LoadReplies(int parentId)
         {
-            // return next 10 comments for each depth
-            var flatPostTree = await this.postsRepository.GetFlatPostTree(id, 10);
+            // return next 5 replies, then one level in with one additional reply
+            var flatPostTree = await this.postsRepository.GetReplies(parentId, 5, 1, 1);
 
             return BuildTree(flatPostTree, 0);
         }

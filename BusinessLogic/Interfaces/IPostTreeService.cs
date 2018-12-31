@@ -7,7 +7,7 @@ namespace PostsApi.BusinessLogic.Interfaces
     public interface IPostTreeService
     {
         Task<List<Post>> LoadMainFeed();
-        Task<List<Post>> LoadMainPost(int id);
-        Task<List<Post>> LoadReplies(int id);
+        Task<List<Post>> LoadRootPostWithReplies(int rootPostId);
+        Task<List<Post>> LoadReplies(int parentId);
     }
 }
