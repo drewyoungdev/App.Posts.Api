@@ -42,7 +42,7 @@ namespace PostsApi.BusinessLogic
             // TODO: start task to append main post data (link_url (images), subreddit, subreddit info, up/down percentage)
 
             // start task to build tree. main post was depth 0 and replies start at 1.
-            var repliesTree = BuildTree(repliesToRootPost, 0);
+            var repliesTree = BuildTree(repliesToRootPost);
 
             // combine data sets
             var postTree = new List<Post>(repliesTree.Count + 1);
@@ -57,12 +57,12 @@ namespace PostsApi.BusinessLogic
             // return next 5 replies, then one level in with one additional reply
             var flatPostTree = await this.postsRepository.GetReplies(parentId, 5, 1, 1);
 
-            return BuildTree(flatPostTree, 0);
+            return BuildTree(flatPostTree);
         }
 
         // Depends on posts being ordered. This ensures lookup always contains parent before child searches for parent.
         // Foreach loop guarentees items are re-added to new tree structure in order they come from db
-        private List<Post> BuildTree(List<Post> posts, int baseDepth)
+        private List<Post> BuildTree(List<Post> posts)
         {
             var lookup = new Dictionary<int, Post>();
             var rootPosts = new List<Post>();
@@ -71,7 +71,7 @@ namespace PostsApi.BusinessLogic
             {
                 lookup.Add(reply.Id, reply);
 
-                if (reply.Depth == baseDepth)
+                if (reply.Depth == 0)
                 {
                     rootPosts.Add(reply);
                 }
