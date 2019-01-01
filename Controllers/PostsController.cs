@@ -24,15 +24,21 @@ namespace PostsApi.Controllers
         }
 
         [HttpGet("{rootPostId:int}")]
-        public async Task<ActionResult<List<Post>>> GetRootPostWithReplies(int rootPostId)
+        public async Task<ActionResult<Post>> GetRootPost(int rootPostId)
         {
-            return await this.postTreeService.LoadRootPostWithReplies(rootPostId);
+            return await this.postTreeService.LoadRootPost(rootPostId);
         }
 
-        [HttpGet("replies/{parentId:int}")]
-        public async Task<ActionResult<List<Post>>> GetReplies(int parentId)
+        [HttpGet("replies/{rootPostId:int}")]
+        public async Task<ActionResult<List<Post>>> GetRootPostReplies(int rootPostId)
         {
-            return await this.postTreeService.LoadReplies(parentId);
+            return await this.postTreeService.LoadRootPostReplies(rootPostId);
+        }
+
+        [HttpGet("replies/subPosts/{parentId:int}")]
+        public async Task<ActionResult<List<Post>>> GetSubPostReplies(int parentId)
+        {
+            return await this.postTreeService.LoadSubPostReplies(parentId);
         }
     }
 }

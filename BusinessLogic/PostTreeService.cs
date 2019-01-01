@@ -26,38 +26,53 @@ namespace PostsApi.BusinessLogic
             return mainFeed;
         }
 
-        public async Task<List<Post>> LoadRootPostWithReplies(int rootPostId)
+        public async Task<Post> LoadRootPost(int rootPostId)
         {
-            // return top 20 comments for each depth
-            var flatPostTree = await this.postsRepository.GetRootPostWithReplies(rootPostId);
+            var rootPost = await this.postsRepository.GetRootPost(rootPostId);
 
-            // extract main post (no parent id)
-            var rootPost = flatPostTree.Where(x => x.ParentId == 0).FirstOrDefault();
-
-            if (rootPost == null) return null;
-
-            // remove main post from post tree building logic (ensure order is not messed up)
-            var repliesToRootPost = flatPostTree.Where(x => x.Id != rootPost.Id).ToList();
-
-            // TODO: start task to append main post data (link_url (images), subreddit, subreddit info, up/down percentage)
-
-            // start task to build tree. main post was depth 0 and replies start at 1.
-            var repliesTree = BuildTree(repliesToRootPost);
-
-            // combine data sets
-            var postTree = new List<Post>(repliesTree.Count + 1);
-            postTree.Add(rootPost);
-            postTree.AddRange(repliesTree);
-
-            return postTree;
+            return rootPost;
         }
 
-        public async Task<List<Post>> LoadReplies(int parentId)
+        public async Task<List<Post>> LoadRootPostReplies(int rootPostId)
         {
-            // return next 5 replies, then one level in with one additional reply
-            var flatPostTree = await this.postsRepository.GetReplies(parentId, 5, 1, 1);
+            // return top 100 comments to root-post, then 6 levels in with top 10 replies
+            return await GetReplies(rootPostId, directReplyLimit: 100, depthLimit: 6, recursiveLimit: 10);
+        }
 
-            return BuildTree(flatPostTree);
+        public async Task<List<Post>> LoadSubPostReplies(int parentId)
+        {
+            // return all replies to sub-post, then 1 level in with one additional reply
+            return await GetReplies(parentId, directReplyLimit: null, depthLimit: 1, recursiveLimit: 1);
+        }
+
+        private async Task<List<Post>> GetReplies(int rootPostId, int? directReplyLimit, int depthLimit, int recursiveLimit)
+        {
+            var rootPost = await this.postsRepository.GetRootPost(rootPostId);
+
+            if (rootPost == null) return null;
+            
+            List<Post> repliesToRootPost = new List<Post>();
+
+            if (IsHighActivity(rootPost))
+            {
+                // if TOO active, then we need to begin hiding sub_replies
+                repliesToRootPost = await this.postsRepository.GetRepliesHighActivity(rootPostId, directReplyLimit, depthLimit, recursiveLimit);
+            }
+            else
+            {
+                repliesToRootPost = await this.postsRepository.GetRepliesLowActivity(rootPostId, directReplyLimit, depthLimit, recursiveLimit);
+            }
+
+            var repliesTree = BuildTree(repliesToRootPost);
+
+            return repliesTree;
+        }
+
+        // High Activity gives us the ability to determine if we confidently apply algorithm at this state
+        private bool IsHighActivity(Post rootPost)
+        {
+            // determine based on time of post and number of replies
+            return false;
         }
 
         // Depends on posts being ordered. This ensures lookup always contains parent before child searches for parent.

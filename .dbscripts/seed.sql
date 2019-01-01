@@ -31,7 +31,9 @@ INSERT INTO posts (id, parent_id, upvotes, downvotes, author, create_date, body)
 ('18', '10', '0', '3000', 'user1', '2010-08-20T15:00:00', 'Lowest Reply to Post 10'),
 ('19', '10', '5', '8', 'user1', '2010-08-20T15:00:00', 'Third to lowest reply to Post 10'),
 ('20', '11', '3', '8', 'user1', '2010-08-20T15:00:00', 'Lowest Reply in Post 11 (below post with no votes)'),
-('21', '11', '100', '100', 'user1', '2010-08-20T15:00:00', '0 score but with upvotes and downvotes');
+('21', '11', '100', '100', 'user1', '2010-08-20T15:00:00', '0 score but with upvotes and downvotes'),
+('22', '10', '0', '0', 'user1', '2010-08-19T15:00:00', 'older reply no votes'),
+('23', '10', '0', '0', 'user1', '2010-08-20T15:00:00', 'new reply no votes');
 -- ## Lower Bound of Wilson Score Confidence Interval
 --The determines the likelihood of another "upvote" or "downvote" based on the binomial distribution of upvotes and downvotes
 --Currently this is hardcoded for a 95% confidence level http://www.evanmiller.org/how-not-to-sort-by-average-rating.html
@@ -70,9 +72,11 @@ BEGIN
 END; 
 $$
 LANGUAGE 'plpgsql';
--- ## Get Root Replies with CI Lower Bound
--- Begin limiting direct comments or only ever showing ones with a certain ci_lower_bound value?
-CREATE FUNCTION get_root_post_replies_w_algorithm(input_parent_id INT)
+-- ## Get Root Replies sorted by upvote and downvote CI Lower Bound
+-- limit total number of direct replies
+-- limit recursive depth (TODO: hide_sub_replies = TRUE AND ci_lower_bound_up < 0.4) -- hide upvoted not meeting ci threshold, un-voted, or negative sub-replies per depth
+-- limit total number of sub-replies per depth
+CREATE FUNCTION get_replies_high_activity(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
 RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
 AS
 $$
@@ -80,27 +84,26 @@ BEGIN
 	RETURN QUERY
 	
 	WITH RECURSIVE posts_tree AS (
-	  SELECT
+	  (SELECT
 		 p.*,
 		 0 depth,
 		 ARRAY[-ci_lower_bound(p.upvotes, p.downvotes, TRUE), ci_lower_bound(p.upvotes, p.downvotes, FALSE)] path -- allows sorting per depth
 	  FROM posts p
 		WHERE 
 			p.parent_id = input_parent_id
-        -- AND p.upvotes >= p.downvotes -- only postive/neutral comments
-		-- LIMIT limit total number of direct replies
-        -- Or accept an OFFSET to continue through list
+		ORDER BY path
+		LIMIT direct_reply_limit)
 	  UNION ALL
-	  SELECT
+	  (SELECT
 		 p.*,
 		 pt.depth + 1,
-		 pt.path || ARRAY[-ci_lower_bound(p.upvotes, p.downvotes, TRUE), ci_lower_bound(p.upvotes, p.downvotes, FALSE)] -- each depth increase priority of all children
+		 pt.path || ARRAY[-ci_lower_bound(p.upvotes, p.downvotes, TRUE), ci_lower_bound(p.upvotes, p.downvotes, FALSE)] subpath -- each depth increase priority of all children
 	  FROM posts p
 		JOIN posts_tree pt ON p.parent_id = pt.id
-		--WHERE 
-		--	p.upvotes >= p.downvotes -- only postive/neutral comments
-		-- AND pt.depth + 1 <= 6 -- limit depth
-		-- LIMIT 5 -- limit to only pulling top 5 rated comments (decreases with more replies)
+		WHERE
+			pt.depth + 1 <= depth_limit
+		ORDER BY subpath
+		LIMIT recursive_limit)
 	)
 
 	SELECT
@@ -119,6 +122,54 @@ BEGIN
 END;
 $$
 LANGUAGE 'plpgsql';
--- NEW: fn to just get root-post replies without algorithm (get_root_post_replies) (old way by just overall score (upvotes - downvotes))
--- NEW: fn to get all replies to a parent post (get_all_replies) (used to load replies after algorithm) + one depth and one reply
--- NEW: fn to just get root-post (get_root_post)
+-- ## Get Root Replies sorted by upvotes and create_date
+-- limit total number of direct replies
+-- limit recursive depth
+-- limit total number of sub-replies per depth
+-- TODO: have a cleaner way of sorting by create_date. perhaps include timezone default to utc.
+CREATE FUNCTION get_replies_low_activity(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
+RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
+AS
+$$
+BEGIN
+	RETURN QUERY
+	
+	WITH RECURSIVE posts_tree AS (
+	  (SELECT
+		 p.*,
+		 0 depth,
+		 ARRAY[-(p.upvotes-p.downvotes), p.create_date::abstime::int::bigint] path -- allows sorting per depth
+	  FROM posts p
+		WHERE 
+			p.parent_id = input_parent_id
+		ORDER BY path
+		LIMIT direct_reply_limit)
+	  UNION ALL
+	  (SELECT
+		 p.*,
+		 pt.depth + 1,
+		 pt.path || ARRAY[-(p.upvotes-p.downvotes), p.create_date::abstime::int::bigint] subpath -- each depth increase priority of all children
+	  FROM posts p
+		JOIN posts_tree pt ON p.parent_id = pt.id
+		WHERE
+			pt.depth + 1 <= depth_limit
+		ORDER BY subpath
+		LIMIT recursive_limit)
+	)
+
+	SELECT
+		ptree.id,
+		ptree.parent_id,
+		ptree.upvotes,
+		ptree.downvotes,
+		ptree.author,
+		ptree.create_date,
+		ptree.body,
+		ptree.depth,
+		(SELECT COUNT(p.id) FROM posts p WHERE p.parent_id = ptree.id) AS num_of_replies
+	FROM posts_tree ptree
+	ORDER BY ptree.path;
+
+END;
+$$
+LANGUAGE 'plpgsql';

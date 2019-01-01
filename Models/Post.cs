@@ -13,24 +13,30 @@ namespace PostsApi.Models
         public int ParentId { get; set; }
 
         [JsonProperty(Order = 3)]
-        public int Score { get; set; }
+        public int Upvotes { get; set; }
 
         [JsonProperty(Order = 4)]
-        public string Author { get; set; }
+        public int Downvotes { get; set; }
 
         [JsonProperty(Order = 5)]
+        public int Score { get; set; }
+
+        [JsonProperty(Order = 6)]
+        public string Author { get; set; }
+
+        [JsonProperty(Order = 7)]
         public DateTime CreateDate { get; set; }
     
-        [JsonProperty(Order = 6)]
-        public string Comment { get; set; }
+        [JsonProperty(Order = 8)]
+        public string Body { get; set; }
         
         // Since we can limit the amount of replies returned per post, we still need to know the total amount.
         // e.g. if we only display the top 3 replies but there are 100 other replies, NumOfReplies would be 100 but Replies.Count would be 3.     
         // FE can take difference and show "Load "x" More Replies" where "x" can be limited.
-        [JsonProperty(Order = 7)]
+        [JsonProperty(Order = 9)]
         public long NumOfReplies { get; set; }
         
-        [JsonProperty(Order = 8)]
+        [JsonProperty(Order = 10)]
         public List<Post> Replies = new List<Post>();
 
         [JsonIgnore]
