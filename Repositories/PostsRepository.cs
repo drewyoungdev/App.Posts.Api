@@ -60,7 +60,7 @@ namespace PostsApi.Repositories
             }
         }
 
-        public async Task<List<Post>> GetReplies(RepliesSortType sortType, int parentId, int? directReplyLimit, int depthLimit, int recursiveLimit)
+        public async Task<List<Post>> GetReplies(RepliesSortType sortType, int parentId, int? directReplyLimit, int? directReplyOffset, int startDepth, int depthLimit, int recursiveLimit)
         {
             using (var conn = this.Connection)
             {
@@ -69,6 +69,8 @@ namespace PostsApi.Repositories
                 PostgresqlParameters param = new PostgresqlParameters();
                 param.Add("@input_parent_id", parentId);
                 param.Add("@direct_reply_limit", directReplyLimit); // null will retrieve all
+                param.Add("@direct_reply_offset", directReplyOffset); // null will offset none
+                param.Add("@start_depth", startDepth);
                 param.Add("@depth_limit", depthLimit);
                 param.Add("@recursive_limit", recursiveLimit);
 

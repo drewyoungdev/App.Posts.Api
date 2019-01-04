@@ -38,8 +38,11 @@ namespace PostsApi.Models
         
         [JsonProperty(Order = 11)]
         public long NumOfHiddenReplies { get { return NumOfReplies - Replies.Count; } }
-        
+
         [JsonProperty(Order = 12)]
+        public bool MustContinueInNewThread { get; set; }
+        
+        [JsonProperty(Order = 13)]
         public List<Post> Replies = new List<Post>();
     }
 }

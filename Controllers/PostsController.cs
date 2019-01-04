@@ -37,9 +37,9 @@ namespace PostsApi.Controllers
         }
 
         [HttpGet("{parentId:int}/replies/{sortType}/subPosts")]
-        public async Task<ActionResult<List<Post>>> GetSubPostReplies(RepliesSortType sortType, int parentId)
+        public async Task<ActionResult<List<Post>>> GetSubPostReplies(RepliesSortType sortType, int parentId, int startDepth, int offSet)
         {
-            return await this.postTreeService.LoadSubPostReplies(sortType, parentId);
+            return await this.postTreeService.LoadSubPostReplies(sortType, parentId, startDepth, offSet);
         }
     }
 }

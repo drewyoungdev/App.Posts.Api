@@ -10,6 +10,6 @@ namespace PostsApi.BusinessLogic.Interfaces
         Task<List<Post>> LoadMainFeed();
         Task<Post> LoadRootPost(int rootPostId);
         Task<List<Post>> LoadRootPostReplies(RepliesSortType sortType, int rootPostId);
-        Task<List<Post>> LoadSubPostReplies(RepliesSortType sortType, int parentId);
+        Task<List<Post>> LoadSubPostReplies(RepliesSortType sortType, int parentId, int startDepth, int offSet);
     }
 }

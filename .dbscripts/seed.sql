@@ -76,7 +76,7 @@ LANGUAGE 'plpgsql';
 -- limit total number of direct replies
 -- limit recursive depth (TODO: hide_sub_replies = TRUE AND ci_lower_bound_up < 0.4) -- hide upvoted not meeting ci threshold, un-voted, or negative sub-replies per depth
 -- limit total number of sub-replies per depth
-CREATE FUNCTION get_replies_best(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
+CREATE FUNCTION get_replies_best(input_parent_id INT, direct_reply_limit INT, direct_reply_offset INT, start_depth INT, depth_limit INT, recursive_limit INT)
 RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, score INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
 AS
 $$
@@ -86,13 +86,14 @@ BEGIN
 	WITH RECURSIVE posts_tree AS (
 	  (SELECT
 		 p.*,
-		 0 depth,
+		 start_depth depth,
 		 ARRAY[-ci_lower_bound(p.upvotes, p.downvotes, TRUE), ci_lower_bound(p.upvotes, p.downvotes, FALSE)] path -- allows sorting per depth
 	  FROM posts p
 		WHERE 
 			p.parent_id = input_parent_id
 		ORDER BY path
-		LIMIT direct_reply_limit)
+		LIMIT direct_reply_limit
+		OFFSET direct_reply_offset)
 	  UNION ALL
 	  (SELECT
 		 p.*,
@@ -127,7 +128,7 @@ LANGUAGE 'plpgsql';
 -- limit total number of direct replies
 -- limit recursive depth
 -- limit total number of sub-replies per depth
-CREATE FUNCTION get_replies_top(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
+CREATE FUNCTION get_replies_top(input_parent_id INT, direct_reply_limit INT, direct_reply_offset INT, start_depth INT, depth_limit INT, recursive_limit INT)
 RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, score INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
 AS
 $$
@@ -137,13 +138,14 @@ BEGIN
 	WITH RECURSIVE posts_tree AS (
 	  (SELECT
 		 p.*,
-		 0 depth,
+		 start_depth depth,
 		 ARRAY[-(p.upvotes-p.downvotes)] path -- allows sorting per depth
 	  FROM posts p
 		WHERE 
 			p.parent_id = input_parent_id
 		ORDER BY path
-		LIMIT direct_reply_limit)
+		LIMIT direct_reply_limit
+		OFFSET direct_reply_offset)
 	  UNION ALL
 	  (SELECT
 		 p.*,

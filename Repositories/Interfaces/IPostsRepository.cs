@@ -9,6 +9,6 @@ namespace PostsApi.Repositories.Interfaces
     {
         Task<List<Post>> GetMainFeed(int limit);
         Task<Post> GetRootPost(int rootPostId);
-        Task<List<Post>> GetReplies(RepliesSortType sortType, int parentId, int? directReplyLimit, int depthLimit, int recursiveLimit);
+        Task<List<Post>> GetReplies(RepliesSortType sortType, int parentId, int? directReplyLimit, int? directReplyOffset, int startDepth, int depthLimit, int recursiveLimit);
     }
 }
