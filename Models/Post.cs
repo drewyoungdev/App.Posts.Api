@@ -29,17 +29,14 @@ namespace PostsApi.Models
     
         [JsonProperty(Order = 8)]
         public string Body { get; set; }
-        
-        // Since we can limit the amount of replies returned per post, we still need to know the total amount.
-        // e.g. if we only display the top 3 replies but there are 100 other replies, NumOfReplies would be 100 but Replies.Count would be 3.     
-        // FE can take difference and show "Load "x" More Replies" where "x" can be limited.
+
         [JsonProperty(Order = 9)]
-        public long NumOfReplies { get; set; }
+        public int Depth { get; set; }
         
         [JsonProperty(Order = 10)]
+        public long NumOfReplies { get; set; }
+        
+        [JsonProperty(Order = 11)]
         public List<Post> Replies = new List<Post>();
-
-        [JsonIgnore]
-        public int Depth { get; set; }
     }
 }

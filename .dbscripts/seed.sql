@@ -77,7 +77,7 @@ LANGUAGE 'plpgsql';
 -- limit recursive depth (TODO: hide_sub_replies = TRUE AND ci_lower_bound_up < 0.4) -- hide upvoted not meeting ci threshold, un-voted, or negative sub-replies per depth
 -- limit total number of sub-replies per depth
 CREATE FUNCTION get_replies_best(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
-RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
+RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, score INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
 AS
 $$
 BEGIN
@@ -111,6 +111,7 @@ BEGIN
 		ptree.parent_id,
 		ptree.upvotes,
 		ptree.downvotes,
+		(ptree.upvotes - ptree.downvotes),
 		ptree.author,
 		ptree.create_date,
 		ptree.body,
@@ -127,7 +128,7 @@ LANGUAGE 'plpgsql';
 -- limit recursive depth
 -- limit total number of sub-replies per depth
 CREATE FUNCTION get_replies_top(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
-RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
+RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, score INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
 AS
 $$
 BEGIN
@@ -161,6 +162,7 @@ BEGIN
 		ptree.parent_id,
 		ptree.upvotes,
 		ptree.downvotes,
+		(ptree.upvotes - ptree.downvotes),
 		ptree.author,
 		ptree.create_date,
 		ptree.body,
@@ -172,3 +174,5 @@ BEGIN
 END;
 $$
 LANGUAGE 'plpgsql';
+-- TODO: add get_replies_new, get_replies_old, and get_replies_controversial
+-- Controversial ranked by float(ups + downs) / max(abs(score(ups, downs)), 1) (items with most votes and closest to 0 are most controversial)
