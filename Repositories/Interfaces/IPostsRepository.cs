@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using PostsApi.Enums;
 using PostsApi.Models;
 
 namespace PostsApi.Repositories.Interfaces
@@ -8,7 +9,6 @@ namespace PostsApi.Repositories.Interfaces
     {
         Task<List<Post>> GetMainFeed(int limit);
         Task<Post> GetRootPost(int rootPostId);
-        Task<List<Post>> GetRepliesLowActivity(int parentId, int? directReplyLimit, int depthLimit, int recursiveLimit);
-        Task<List<Post>> GetRepliesHighActivity(int parentId, int? directReplyLimit, int depthLimit, int recursiveLimit);
+        Task<List<Post>> GetReplies(RepliesSortType sortType, int parentId, int? directReplyLimit, int depthLimit, int recursiveLimit);
     }
 }

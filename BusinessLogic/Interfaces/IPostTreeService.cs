@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using PostsApi.Enums;
 using PostsApi.Models;
 
 namespace PostsApi.BusinessLogic.Interfaces
@@ -8,7 +9,7 @@ namespace PostsApi.BusinessLogic.Interfaces
     {
         Task<List<Post>> LoadMainFeed();
         Task<Post> LoadRootPost(int rootPostId);
-        Task<List<Post>> LoadRootPostReplies(int rootPostId);
-        Task<List<Post>> LoadSubPostReplies(int parentId);
+        Task<List<Post>> LoadRootPostReplies(RepliesSortType sortType, int rootPostId);
+        Task<List<Post>> LoadSubPostReplies(RepliesSortType sortType, int parentId);
     }
 }

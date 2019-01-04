@@ -76,7 +76,7 @@ LANGUAGE 'plpgsql';
 -- limit total number of direct replies
 -- limit recursive depth (TODO: hide_sub_replies = TRUE AND ci_lower_bound_up < 0.4) -- hide upvoted not meeting ci threshold, un-voted, or negative sub-replies per depth
 -- limit total number of sub-replies per depth
-CREATE FUNCTION get_replies_high_activity(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
+CREATE FUNCTION get_replies_best(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
 RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
 AS
 $$
@@ -122,12 +122,11 @@ BEGIN
 END;
 $$
 LANGUAGE 'plpgsql';
--- ## Get Root Replies sorted by upvotes and create_date
+-- ## Get Root Replies sorted by upvotes
 -- limit total number of direct replies
 -- limit recursive depth
 -- limit total number of sub-replies per depth
--- TODO: have a cleaner way of sorting by create_date. perhaps include timezone default to utc.
-CREATE FUNCTION get_replies_low_activity(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
+CREATE FUNCTION get_replies_top(input_parent_id INT, direct_reply_limit INT, depth_limit INT, recursive_limit INT)
 RETURNS TABLE(id INT, parent_id INT, upvotes INT, downvotes INT, author VARCHAR, create_date TIMESTAMP, body TEXT, depth INT, num_of_replies BIGINT)
 AS
 $$
@@ -138,7 +137,7 @@ BEGIN
 	  (SELECT
 		 p.*,
 		 0 depth,
-		 ARRAY[-(p.upvotes-p.downvotes), p.create_date::abstime::int::bigint] path -- allows sorting per depth
+		 ARRAY[-(p.upvotes-p.downvotes)] path -- allows sorting per depth
 	  FROM posts p
 		WHERE 
 			p.parent_id = input_parent_id
@@ -148,7 +147,7 @@ BEGIN
 	  (SELECT
 		 p.*,
 		 pt.depth + 1,
-		 pt.path || ARRAY[-(p.upvotes-p.downvotes), p.create_date::abstime::int::bigint] subpath -- each depth increase priority of all children
+		 pt.path || ARRAY[-(p.upvotes-p.downvotes)] subpath -- each depth increase priority of all children
 	  FROM posts p
 		JOIN posts_tree pt ON p.parent_id = pt.id
 		WHERE

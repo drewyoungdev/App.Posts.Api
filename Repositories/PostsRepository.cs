@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
+using PostsApi.Enums;
 using PostsApi.Extensions;
 using PostsApi.Models;
 using PostsApi.Repositories.Interfaces;
@@ -59,10 +60,7 @@ namespace PostsApi.Repositories
             }
         }
 
-        // Method to get replies for post using low-activity algorithm
-        // While root post is in a state of low-activity, we give posts more of a chance to make it to the top
-        // Sorts replies based on create_date and upvotes only initially
-        public async Task<List<Post>> GetRepliesLowActivity(int parentId, int? directReplyLimit, int depthLimit, int recursiveLimit)
+        public async Task<List<Post>> GetReplies(RepliesSortType sortType, int parentId, int? directReplyLimit, int depthLimit, int recursiveLimit)
         {
             using (var conn = this.Connection)
             {
@@ -74,29 +72,16 @@ namespace PostsApi.Repositories
                 param.Add("@depth_limit", depthLimit);
                 param.Add("@recursive_limit", recursiveLimit);
 
-                var results = await conn.QueryAsync<Post>("get_replies_low_activity", param, null, null, CommandType.StoredProcedure);
-
-                return results.ToList();
-            }
-        }
-
-        // Method to get replies for post using high-activity algorithm
-        // Once root post reaches a state of high-activity, then confidence interval check begins.
-        // Sorts replies based on highest upvote confidence interval then non-voted replies.
-        // Negative comments are sorted after non-voted replies and in ascending order by highest downvote confidence interval.
-        public async Task<List<Post>> GetRepliesHighActivity(int parentId, int? directReplyLimit, int depthLimit, int recursiveLimit)
-        {
-            using (var conn = this.Connection)
-            {
-                conn.Open();
-
-                PostgresqlParameters param = new PostgresqlParameters();
-                param.Add("@input_parent_id", parentId);
-                param.Add("@direct_reply_limit", directReplyLimit); // null will retrieve all
-                param.Add("@depth_limit", depthLimit);
-                param.Add("@recursive_limit", recursiveLimit);
-
-                var results = await conn.QueryAsync<Post>("get_replies_high_activity", param, null, null, CommandType.StoredProcedure);
+                IEnumerable<Post> results;
+                switch (sortType)
+                {
+                    case RepliesSortType.Top:
+                        results =  await conn.QueryAsync<Post>("get_replies_top", param, null, null, CommandType.StoredProcedure);
+                        break;
+                    default:
+                        results = await conn.QueryAsync<Post>("get_replies_best", param, null, null, CommandType.StoredProcedure);
+                        break;
+                }
 
                 return results.ToList();
             }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using PostsApi.BusinessLogic.Interfaces;
+using PostsApi.Enums;
 using PostsApi.Models;
 using PostsApi.Repositories.Interfaces;
 
@@ -33,19 +34,19 @@ namespace PostsApi.BusinessLogic
             return rootPost;
         }
 
-        public async Task<List<Post>> LoadRootPostReplies(int rootPostId)
+        public async Task<List<Post>> LoadRootPostReplies(RepliesSortType sortType, int rootPostId)
         {
             // return top 100 comments to root-post, then 6 levels in with top 10 replies
-            return await GetReplies(rootPostId, directReplyLimit: 100, depthLimit: 6, recursiveLimit: 10);
+            return await GetReplies(sortType, rootPostId, directReplyLimit: 100, depthLimit: 6, recursiveLimit: 10);
         }
 
-        public async Task<List<Post>> LoadSubPostReplies(int parentId)
+        public async Task<List<Post>> LoadSubPostReplies(RepliesSortType sortType, int parentId)
         {
             // return all replies to sub-post, then 1 level in with one additional reply
-            return await GetReplies(parentId, directReplyLimit: null, depthLimit: 1, recursiveLimit: 1);
+            return await GetReplies(sortType, parentId, directReplyLimit: null, depthLimit: 1, recursiveLimit: 1);
         }
 
-        private async Task<List<Post>> GetReplies(int rootPostId, int? directReplyLimit, int depthLimit, int recursiveLimit)
+        private async Task<List<Post>> GetReplies(RepliesSortType sortType, int rootPostId, int? directReplyLimit, int depthLimit, int recursiveLimit)
         {
             var rootPost = await this.postsRepository.GetRootPost(rootPostId);
 
@@ -53,26 +54,11 @@ namespace PostsApi.BusinessLogic
             
             List<Post> repliesToRootPost = new List<Post>();
 
-            if (IsHighActivity(rootPost))
-            {
-                // if TOO active, then we need to begin hiding sub_replies
-                repliesToRootPost = await this.postsRepository.GetRepliesHighActivity(rootPostId, directReplyLimit, depthLimit, recursiveLimit);
-            }
-            else
-            {
-                repliesToRootPost = await this.postsRepository.GetRepliesLowActivity(rootPostId, directReplyLimit, depthLimit, recursiveLimit);
-            }
+            repliesToRootPost = await this.postsRepository.GetReplies(sortType, rootPostId, directReplyLimit, depthLimit, recursiveLimit);
 
             var repliesTree = BuildTree(repliesToRootPost);
 
             return repliesTree;
-        }
-
-        // High Activity gives us the ability to determine if we confidently apply algorithm at this state
-        private bool IsHighActivity(Post rootPost)
-        {
-            // determine based on time of post and number of replies
-            return false;
         }
 
         // Depends on posts being ordered. This ensures lookup always contains parent before child searches for parent.
