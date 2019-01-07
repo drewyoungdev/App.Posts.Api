@@ -31,15 +31,15 @@ namespace PostsApi.Controllers
         }
 
         [HttpGet("{rootPostId:int}/replies/{sortType}")]
-        public async Task<ActionResult<List<Post>>> GetRootPostReplies(RepliesSortType sortType, int rootPostId)
+        public async Task<ActionResult<List<Post>>> GetRootPostReplies(RepliesSortType sortType, int rootPostId, int maxDepth)
         {
-            return await this.postTreeService.LoadRootPostReplies(sortType, rootPostId);
+            return await this.postTreeService.LoadRootPostReplies(sortType, rootPostId, maxDepth);
         }
 
         [HttpGet("{parentId:int}/replies/{sortType}/subPosts")]
-        public async Task<ActionResult<List<Post>>> GetSubPostReplies(RepliesSortType sortType, int parentId, int startDepth, int offSet)
+        public async Task<ActionResult<List<Post>>> GetSubPostReplies(RepliesSortType sortType, int parentId, int startDepth, int maxDepth, int offSet)
         {
-            return await this.postTreeService.LoadSubPostReplies(sortType, parentId, startDepth, offSet);
+            return await this.postTreeService.LoadSubPostReplies(sortType, parentId, startDepth, maxDepth, offSet);
         }
     }
 }

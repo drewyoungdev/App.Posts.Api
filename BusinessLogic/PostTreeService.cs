@@ -12,7 +12,6 @@ namespace PostsApi.BusinessLogic
     public class PostTreeService : IPostTreeService
     {
         private readonly IPostsRepository postsRepository;
-        private const int MaxDepth = 7;
 
         public PostTreeService(IPostsRepository postsRepository)
         {
@@ -36,22 +35,22 @@ namespace PostsApi.BusinessLogic
             return rootPost;
         }
 
-        public async Task<List<Post>> LoadRootPostReplies(RepliesSortType sortType, int rootPostId)
+        public async Task<List<Post>> LoadRootPostReplies(RepliesSortType sortType, int rootPostId, int maxDepth)
         {
             // return top 100 comments to root-post, then go until max depth in with top 10 replies
-            return await GetReplies(sortType, rootPostId, directReplyLimit: 100, directReplyOffset: null, startDepth: 0, depthLimit: MaxDepth, recursiveLimit: 10);
+            return await GetReplies(sortType, rootPostId, directReplyLimit: 100, directReplyOffset: null, startDepth: 0, depthLimit: maxDepth, recursiveLimit: 10);
         }
 
-        public async Task<List<Post>> LoadSubPostReplies(RepliesSortType sortType, int parentId, int startDepth, int offset)
+        public async Task<List<Post>> LoadSubPostReplies(RepliesSortType sortType, int parentId, int startDepth, int maxDepth, int offset)
         {
-            if (startDepth >= MaxDepth)
+            if (startDepth > maxDepth)
             {
                 // return error saying you cannot start past MaxDepth
-                throw new ArgumentException($"Start Depth of {startDepth} must be less than the Max-Depth of {MaxDepth}");
+                throw new ArgumentException($"Start Depth of {startDepth} must be less than the Max-Depth of {maxDepth}");
             }
 
             // return all replies to sub-post, off-set to start after the last comment returned. startDepth ensures we start at the same depth as we left off
-            return await GetReplies(sortType, parentId, directReplyLimit: null, directReplyOffset: offset, startDepth: startDepth, depthLimit: MaxDepth, recursiveLimit: 1);
+            return await GetReplies(sortType, parentId, directReplyLimit: null, directReplyOffset: offset, startDepth: startDepth, depthLimit: maxDepth, recursiveLimit: 1);
         }
 
         private async Task<List<Post>> GetReplies(RepliesSortType sortType, int rootPostId, int? directReplyLimit, int? directReplyOffset, int startDepth, int depthLimit, int recursiveLimit)
@@ -64,20 +63,25 @@ namespace PostsApi.BusinessLogic
 
             repliesToRootPost = await this.postsRepository.GetReplies(sortType, rootPostId, directReplyLimit, directReplyOffset, startDepth, depthLimit, recursiveLimit);
 
-            var repliesTree = BuildTree(repliesToRootPost, startDepth);
+            var repliesTree = BuildTree(repliesToRootPost, startDepth, depthLimit);
 
             return repliesTree;
         }
 
         // Depends on posts being ordered. This ensures lookup always contains parent before child searches for parent.
         // Foreach loop guarentees items are re-added to new tree structure in order they come from db
-        private List<Post> BuildTree(List<Post> posts, int startDepth)
+        private List<Post> BuildTree(List<Post> posts, int startDepth, int depthLimit)
         {
             var lookup = new Dictionary<int, Post>();
             var rootPosts = new List<Post>();
 
             foreach (var reply in posts)
             {
+                if (reply.Depth == depthLimit)
+                {
+                    reply.MustContinueInNewThread = true;
+                }
+                
                 lookup.Add(reply.Id, reply);
 
                 // preventative logic is place to never have startDepth >= MaxDepth. startDepth must be less than MaxDepth
@@ -86,14 +90,9 @@ namespace PostsApi.BusinessLogic
                 {
                     rootPosts.Add(reply);
                 }
-                else if (reply.Depth == MaxDepth)
-                {
-                    var parentPost = lookup[reply.ParentId];
-                    parentPost.MustContinueInNewThread = true;
-                }
                 else
                 {
-                    var parentPost = lookup[reply.ParentId];
+                    var parentPost = lookup[reply.ParentId];   
                     parentPost.Replies.Add(reply);
                 }
             }
