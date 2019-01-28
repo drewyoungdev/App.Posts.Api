@@ -99,5 +99,18 @@ namespace PostsApi.BusinessLogic
 
             return rootPosts;
         }
+
+        public async Task<int> CreatePost(NewPost newPost)
+        {
+            var post = new Post()
+            {
+                ParentId = newPost.ParentId,
+                Author = newPost.Author,
+                Body = newPost.Body,
+                CreateDate = DateTime.Now
+            };
+
+            return await this.postsRepository.CreatePost(post);
+        }
     }
 }

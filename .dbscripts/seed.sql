@@ -10,30 +10,30 @@ CREATE TABLE IF NOT EXISTS posts (
   body     text
 );
 --### Insert dev records
-INSERT INTO posts (id, parent_id, upvotes, downvotes, author, create_date, body) VALUES 
-('1', NULL, '10', '5', 'user1', '2010-08-20T15:00:00', 'This is a root-post #1'),
-('2', '1', '5500', '4500', 'user1', '2010-08-20T15:00:00', 'Ranked lower with higher (upvotes - downvotes) (55% positive)'),
-('3', '1', '600', '400', 'user1', '2010-08-20T15:00:00', 'Ranked higher with lower (upvotes - downvotes) (60% positive)'),
-('4', NULL, '10', '5', 'user1', '2010-08-20T15:00:00', 'This is a root-post #2'),
-('5', '4', '2', '0', 'user1', '2010-08-20T15:00:00', 'Ranked lower with higher average rating (100% positive)'),
-('6', '4', '100', '1', 'user1', '2010-08-20T15:00:00', 'Ranked higher with lower average rating (99% positive)'),
-('7', NULL, '10', '5', 'user1', '2010-08-20T15:00:00', 'This is a root-post #3'),
-('8', '7', '10000', '1', 'user1', '2010-08-20T15:00:00', 'Very HIGH confidence bound'),
-('9', '7', '1', '10000', 'user1', '2010-08-20T15:00:00', 'Very LOW confidence bound'),
-('10', NULL, '10', '5', 'user1', '2010-08-20T15:00:00', 'This is a root-post #4'),
-('11', '10', '10', '25', 'user1', '2010-08-20T15:00:00', 'Low Reply to Post 10'),
-('12', '10', '100', '5', 'user1', '2010-08-20T15:00:00', 'Medium Reply to Post 10'),
-('13', '10', '101', '4', 'user1', '2010-08-20T15:00:00', 'High Reply to Post 10'),
-('14', '11', '5500', '4500', 'user1', '2010-08-20T15:00:00', 'Low Reply to Post 11'),
-('15', '11', '0', '0', 'user1', '2010-08-20T15:00:00', 'Medium Reply to Post 11'),
-('16', '11', '600', '400', 'user1', '2010-08-20T15:00:00', 'High Reply to Post 11'),
-('17', '10', '102', '3', 'user1', '2010-08-20T15:00:00', 'Highest Reply to Post 10'),
-('18', '10', '0', '3000', 'user1', '2010-08-20T15:00:00', 'Lowest Reply to Post 10'),
-('19', '10', '5', '8', 'user1', '2010-08-20T15:00:00', 'Third to lowest reply to Post 10'),
-('20', '11', '3', '8', 'user1', '2010-08-20T15:00:00', 'Lowest Reply in Post 11 (below post with no votes)'),
-('21', '11', '100', '100', 'user1', '2010-08-20T15:00:00', '0 score but with upvotes and downvotes'),
-('22', '10', '0', '0', 'user1', '2010-08-19T15:00:00', 'older reply no votes'),
-('23', '10', '0', '0', 'user1', '2010-08-20T15:00:00', 'new reply no votes');
+INSERT INTO posts (parent_id, upvotes, downvotes, author, create_date, body) VALUES 
+(NULL, '10', '5', 'user1', '2010-08-20T15:00:00', 'This is a root-post #1'),
+('1', '5500', '4500', 'user1', '2010-08-20T15:00:00', 'Ranked lower with higher (upvotes - downvotes) (55% positive)'),
+('1', '600', '400', 'user1', '2010-08-20T15:00:00', 'Ranked higher with lower (upvotes - downvotes) (60% positive)'),
+(NULL, '10', '5', 'user1', '2010-08-20T15:00:00', 'This is a root-post #2'),
+('4', '2', '0', 'user1', '2010-08-20T15:00:00', 'Ranked lower with higher average rating (100% positive)'),
+('4', '100', '1', 'user1', '2010-08-20T15:00:00', 'Ranked higher with lower average rating (99% positive)'),
+(NULL, '10', '5', 'user1', '2010-08-20T15:00:00', 'This is a root-post #3'),
+('7', '10000', '1', 'user1', '2010-08-20T15:00:00', 'Very HIGH confidence bound'),
+('7', '1', '10000', 'user1', '2010-08-20T15:00:00', 'Very LOW confidence bound'),
+(NULL, '10', '5', 'user1', '2010-08-20T15:00:00', 'This is a root-post #4'),
+('10', '10', '25', 'user1', '2010-08-20T15:00:00', 'Low Reply to Post 10'),
+('10', '100', '5', 'user1', '2010-08-20T15:00:00', 'Medium Reply to Post 10'),
+('10', '101', '4', 'user1', '2010-08-20T15:00:00', 'High Reply to Post 10'),
+('11', '5500', '4500', 'user1', '2010-08-20T15:00:00', 'Low Reply to Post 11'),
+('11', '0', '0', 'user1', '2010-08-20T15:00:00', 'Medium Reply to Post 11'),
+('11', '600', '400', 'user1', '2010-08-20T15:00:00', 'High Reply to Post 11'),
+('10', '102', '3', 'user1', '2010-08-20T15:00:00', 'Highest Reply to Post 10'),
+('10', '0', '3000', 'user1', '2010-08-20T15:00:00', 'Lowest Reply to Post 10'),
+('10', '5', '8', 'user1', '2010-08-20T15:00:00', 'Third to lowest reply to Post 10'),
+('11', '3', '8', 'user1', '2010-08-20T15:00:00', 'Lowest Reply in Post 11 (below post with no votes)'),
+('11', '100', '100', 'user1', '2010-08-20T15:00:00', '0 score but with upvotes and downvotes'),
+('10', '0', '0', 'user1', '2010-08-19T15:00:00', 'older reply no votes'),
+('10', '0', '0', 'user1', '2010-08-20T15:00:00', 'new reply no votes');
 -- ## Lower Bound of Wilson Score Confidence Interval
 --The determines the likelihood of another "upvote" or "downvote" based on the binomial distribution of upvotes and downvotes
 --Currently this is hardcoded for a 95% confidence level http://www.evanmiller.org/how-not-to-sort-by-average-rating.html

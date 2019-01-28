@@ -5,6 +5,7 @@ using PostsApi.BusinessLogic.Interfaces;
 using PostsApi.Enums;
 using PostsApi.Models;
 
+// Rename to CommentsApi?
 namespace PostsApi.Controllers
 {
     [Route("api/[controller]")]
@@ -40,6 +41,14 @@ namespace PostsApi.Controllers
         public async Task<ActionResult<List<Post>>> GetSubPostReplies(RepliesSortType sortType, int parentId, int startDepth, int maxDepth, int offSet)
         {
             return await this.postTreeService.LoadSubPostReplies(sortType, parentId, startDepth, maxDepth, offSet);
+        }
+
+        [HttpPost("{parentId:int}")]
+        public async Task<ActionResult> Post(int parentId, [FromBody]NewPost post)
+        {
+            post.ParentId = parentId;
+
+            return Created(string.Empty, await this.postTreeService.CreatePost(post));
         }
     }
 }
