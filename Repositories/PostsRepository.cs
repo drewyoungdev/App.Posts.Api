@@ -88,5 +88,26 @@ namespace PostsApi.Repositories
                 return results.ToList();
             }
         }
+    
+        public async Task<int> CreatePost(Post post)
+        {
+            using (var conn = this.Connection)
+            {
+                // To return entire object
+                // string sQuery = @"INSERT INTO posts(parent_id, body, author, upvotes, downvotes, create_date) " +
+                //                 "VALUES (@ParentId, @Body, @Author, @Upvotes, @Downvotes, @CreateDate) " +
+                //                 "RETURNING id, parent_id as ParentId, body, author, create_date as CreateDate";
+                // conn.Open();
+
+                // return await conn.QuerySingleAsync<Post>(sQuery, post);
+
+                string sQuery = @"INSERT INTO posts(parent_id, body, author, upvotes, downvotes, create_date) " +
+                                "VALUES (@ParentId, @Body, @Author, @Upvotes, @Downvotes, @CreateDate) " +
+                                "RETURNING id";   
+                conn.Open();
+
+                return await conn.ExecuteScalarAsync<int>(sQuery, post);
+            }
+        }
     }
 }
